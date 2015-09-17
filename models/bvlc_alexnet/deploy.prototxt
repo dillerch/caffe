@@ -181,20 +181,19 @@ layer {
   top: "conv5"
 }
 layer {
-  name: "pool5"
-  type: "Pooling"
+  name: "spp"
+  type: "SPP"
   bottom: "conv5"
-  top: "pool5"
-  pooling_param {
+  top: "spp"
+  spp_param {
     pool: MAX
-    kernel_size: 3
-    stride: 2
+    pyramid_height: 3
   }
 }
 layer {
   name: "fc6"
   type: "InnerProduct"
-  bottom: "pool5"
+  bottom: "spp"
   top: "fc6"
   param {
     lr_mult: 1

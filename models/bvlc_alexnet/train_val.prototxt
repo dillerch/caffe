@@ -13,7 +13,7 @@ layer {
     mean_file: "data/ilsvrc12/imagenet_mean.binaryproto"
   }
   data_param {
-    source: "examples/imagenet/ilsvrc12_train_lmdb"
+    source: "/data/share/ILSVRC2012/LMDB/256x256/test"
     batch_size: 256
     backend: LMDB
   }
@@ -32,7 +32,7 @@ layer {
     mean_file: "data/ilsvrc12/imagenet_mean.binaryproto"
   }
   data_param {
-    source: "examples/imagenet/ilsvrc12_val_lmdb"
+    source: "/data/share/ILSVRC2012/LMDB/256x256/val"
     batch_size: 50
     backend: LMDB
   }
@@ -250,20 +250,19 @@ layer {
   top: "conv5"
 }
 layer {
-  name: "pool5"
-  type: "Pooling"
+  name: "spp"
+  type: "SPP"
   bottom: "conv5"
-  top: "pool5"
-  pooling_param {
+  top: "spp"
+  spp_param {
     pool: MAX
-    kernel_size: 3
-    stride: 2
+    pyramid_height: 3
   }
 }
 layer {
   name: "fc6"
   type: "InnerProduct"
-  bottom: "pool5"
+  bottom: "spp"
   top: "fc6"
   param {
     lr_mult: 1
