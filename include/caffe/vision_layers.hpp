@@ -471,18 +471,16 @@ class SPPLayer : public Layer<Dtype> {
 
   virtual inline const char* type() const { return "SPP"; }
   virtual inline int ExactNumBottomBlobs() const { return 1; }
-  virtual inline int MinTopBlobs() const { return 1; }
-  // MAX POOL layers can output an extra top blob for the mask;
-  // others can only output the pooled inputs.
-  virtual inline int MaxTopBlobs() const {
-    return (this->layer_param_.pooling_param().pool() ==
-            PoolingParameter_PoolMethod_MAX) ? 2 : 1;
-  }
+  virtual inline int ExactNumTopBlobs() const { return 1; }
 
  protected:
   virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top);
   virtual void Backward_cpu(const vector<Blob<Dtype>*>& top,
+      const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
+  virtual void Forward_gpu(const vector<Blob<Dtype>*>& bottom,
+      const vector<Blob<Dtype>*>& top);
+  virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
       const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
   // calculates the kernel and stride dimensions for the pooling layer,
   // returns a correctly configured LayerParameter for a PoolingLayer
@@ -491,9 +489,11 @@ class SPPLayer : public Layer<Dtype> {
 
   int pyramid_height_;
   int bottom_h_, bottom_w_;
+  int num_;
   int channels_;
   int kernel_h_, kernel_w_;
   int pad_h_, pad_w_;
+  bool reshaped_first_time_;
 
   /// the internal Split layer that feeds the pooling layers
   shared_ptr<SplitLayer<Dtype> > split_layer_;
