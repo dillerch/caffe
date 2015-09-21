@@ -488,6 +488,8 @@ class SPPLayer : public Layer<Dtype> {
       const int bottom_h, const int bottom_w, const SPPParameter spp_param);
 
   int pyramid_height_;
+  vector<int> pyramid_bins_;
+  bool custom_pyramid_;
   int bottom_h_, bottom_w_;
   int num_;
   int channels_;

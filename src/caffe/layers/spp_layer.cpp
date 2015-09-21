@@ -14,10 +14,9 @@ using std::min;
 using std::max;
 
 template <typename Dtype>
-LayerParameter SPPLayer<Dtype>::GetPoolingParam(const int pyramid_level,
-      const int bottom_h, const int bottom_w, const SPPParameter spp_param) {
+//Takes current number of bins, the height and width of the bottom and an sppparameter
+LayerParameter SPPLayer<Dtype>::GetPoolingParam(const int num_bins, const int bottom_h, const int bottom_w, const SPPParameter spp_param) {
   LayerParameter pooling_param;
-  int num_bins = pow(2, pyramid_level);
 
   // find padding and kernel size so that the pooling is
   // performed across the entire image
@@ -43,16 +42,13 @@ LayerParameter SPPLayer<Dtype>::GetPoolingParam(const int pyramid_level,
 
   switch (spp_param.pool()) {
   case SPPParameter_PoolMethod_MAX:
-    pooling_param.mutable_pooling_param()->set_pool(
-        PoolingParameter_PoolMethod_MAX);
+    pooling_param.mutable_pooling_param()->set_pool(PoolingParameter_PoolMethod_MAX);
     break;
   case SPPParameter_PoolMethod_AVE:
-    pooling_param.mutable_pooling_param()->set_pool(
-        PoolingParameter_PoolMethod_AVE);
+    pooling_param.mutable_pooling_param()->set_pool(PoolingParameter_PoolMethod_AVE);
     break;
   case SPPParameter_PoolMethod_STOCHASTIC:
-    pooling_param.mutable_pooling_param()->set_pool(
-        PoolingParameter_PoolMethod_STOCHASTIC);
+    pooling_param.mutable_pooling_param()->set_pool(PoolingParameter_PoolMethod_STOCHASTIC);
     break;
   default:
     LOG(FATAL) << "Unknown pooling method.";
@@ -61,11 +57,12 @@ LayerParameter SPPLayer<Dtype>::GetPoolingParam(const int pyramid_level,
   return pooling_param;
 }
 
+//SetUp function; takes data from bottom and writes to top
 template <typename Dtype>
-void SPPLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
-      const vector<Blob<Dtype>*>& top) {
+void SPPLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
   SPPParameter spp_param = this->layer_param_.spp_param();
 
+  //Initialization
   num_ = bottom[0]->num();
   channels_ = bottom[0]->channels();
   bottom_h_ = bottom[0]->height();
@@ -74,7 +71,26 @@ void SPPLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   CHECK_GT(bottom_h_, 0) << "Input dimensions cannot be zero.";
   CHECK_GT(bottom_w_, 0) << "Input dimensions cannot be zero.";
 
+  switch (spp_param.pyramid_type()) {
+  case SPPParameter_PyramidType_SPP_NET4:
+    pyramid_bins_.push_back(1); pyramid_bins_.push_back(2); pyramid_bins_.push_back(3); pyramid_bins_.push_back(4);
+    pyramid_height_ = 4;
+    custom_pyramid_ = true;
+    break;
+  case SPPParameter_PyramidType_SPP_NET6:
+    pyramid_bins_.push_back(1); pyramid_bins_.push_back(2); pyramid_bins_.push_back(3); pyramid_bins_.push_back(6);
+    pyramid_height_ = 4;
+    custom_pyramid_ = true;
+    break;
+  case SPPParameter_PyramidType_CUSTOM:
+    custom_pyramid_ = false;
+    break;
+  default:
+    LOG(FATAL) << "Unknown pyramid type.";
+  }
+
   pyramid_height_ = spp_param.pyramid_height();
+
   split_top_vec_.clear();
   pooling_bottom_vecs_.clear();
   pooling_layers_.clear();
@@ -84,16 +100,18 @@ void SPPLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   flatten_top_vecs_.clear();
   flatten_outputs_.clear();
   concat_bottom_vec_.clear();
+  //###
 
+  //Only use one pooling layer with one bin if pyramid height is 1 (simplest case)
   if (pyramid_height_ == 1) {
     // pooling layer setup
-    LayerParameter pooling_param = GetPoolingParam(0, bottom_h_, bottom_w_,
-        spp_param);
-    pooling_layers_.push_back(shared_ptr<PoolingLayer<Dtype> > (
-        new PoolingLayer<Dtype>(pooling_param)));
+    LayerParameter pooling_param = GetPoolingParam(1, bottom_h_, bottom_w_, spp_param);
+    pooling_layers_.push_back(shared_ptr<PoolingLayer<Dtype> > (new PoolingLayer<Dtype>(pooling_param)));
     pooling_layers_[0]->SetUp(bottom, top);
     return;
   }
+  //###
+
   // split layer output holders setup
   for (int i = 0; i < pyramid_height_; i++) {
     split_top_vec_.push_back(new Blob<Dtype>());
@@ -105,6 +123,7 @@ void SPPLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   split_layer_->SetUp(bottom, split_top_vec_);
 
   for (int i = 0; i < pyramid_height_; i++) {
+    int num_bins = custom_pyramid_ ? pyramid_bins_[i] : pow(2, i);
     // pooling layer input holders setup
     pooling_bottom_vecs_.push_back(new vector<Blob<Dtype>*>);
     pooling_bottom_vecs_[i]->push_back(split_top_vec_[i]);
@@ -115,11 +134,9 @@ void SPPLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
     pooling_top_vecs_[i]->push_back(pooling_outputs_[i]);
 
     // pooling layer setup
-    LayerParameter pooling_param = GetPoolingParam(
-        i, bottom_h_, bottom_w_, spp_param);
+    LayerParameter pooling_param = GetPoolingParam(num_bins, bottom_h_, bottom_w_, spp_param);
 
-    pooling_layers_.push_back(shared_ptr<PoolingLayer<Dtype> > (
-        new PoolingLayer<Dtype>(pooling_param)));
+    pooling_layers_.push_back(shared_ptr<PoolingLayer<Dtype> > (new PoolingLayer<Dtype>(pooling_param)));
     pooling_layers_[i]->SetUp(*pooling_bottom_vecs_[i], *pooling_top_vecs_[i]);
 
     // flatten layer output holders setup
@@ -143,8 +160,7 @@ void SPPLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
 }
 
 template <typename Dtype>
-void SPPLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
-      const vector<Blob<Dtype>*>& top) {
+void SPPLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
   CHECK_EQ(4, bottom[0]->num_axes()) << "Input must have 4 axes, "
       << "corresponding to (num, channels, height, width)";
   // Do nothing if bottom shape is unchanged since last Reshape
@@ -160,8 +176,7 @@ void SPPLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
   reshaped_first_time_ = true;
   SPPParameter spp_param = this->layer_param_.spp_param();
   if (pyramid_height_ == 1) {
-    LayerParameter pooling_param = GetPoolingParam(0, bottom_h_, bottom_w_,
-        spp_param);
+    LayerParameter pooling_param = GetPoolingParam(1, bottom_h_, bottom_w_, spp_param);
     pooling_layers_[0].reset(new PoolingLayer<Dtype>(pooling_param));
     pooling_layers_[0]->SetUp(bottom, top);
     pooling_layers_[0]->Reshape(bottom, top);
@@ -169,8 +184,8 @@ void SPPLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
   }
   split_layer_->Reshape(bottom, split_top_vec_);
   for (int i = 0; i < pyramid_height_; i++) {
-    LayerParameter pooling_param = GetPoolingParam(
-        i, bottom_h_, bottom_w_, spp_param);
+    int num_bins = custom_pyramid_ ? pyramid_bins_[i] : pow(2, i);
+    LayerParameter pooling_param = GetPoolingParam(num_bins, bottom_h_, bottom_w_, spp_param);
 
     pooling_layers_[i].reset(
         new PoolingLayer<Dtype>(pooling_param));
@@ -185,19 +200,18 @@ void SPPLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
 }
 
 template <typename Dtype>
-void SPPLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
-      const vector<Blob<Dtype>*>& top) {
+void SPPLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
   if (pyramid_height_ == 1) {
     pooling_layers_[0]->Forward(bottom, top);
     return;
   }
+
   split_layer_->Forward(bottom, split_top_vec_);
   for (int i = 0; i < pyramid_height_; i++) {
-    pooling_layers_[i]->Forward(
-        *pooling_bottom_vecs_[i], *pooling_top_vecs_[i]);
-    flatten_layers_[i]->Forward(
-        *pooling_top_vecs_[i], *flatten_top_vecs_[i]);
+    pooling_layers_[i]->Forward(*pooling_bottom_vecs_[i], *pooling_top_vecs_[i]);
+    flatten_layers_[i]->Forward(*pooling_top_vecs_[i], *flatten_top_vecs_[i]);
   }
+
   concat_layer_->Forward(concat_bottom_vec_, top);
 }
 
