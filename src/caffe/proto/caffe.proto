@@ -974,9 +974,9 @@ message SPPParameter {
     STOCHASTIC = 2;
   }
   enum PyramidType {
-    SPP_NET4;
-    SPP_NET6;
-    CUSTOM;
+    SPP_NET4 = 0;
+    SPP_NET6 = 1;
+    CUSTOM = 2;
   }
   optional PyramidType pyramid_type = 1 [default = CUSTOM];
   optional uint32 pyramid_height = 2;
