@@ -83,13 +83,12 @@ void SPPLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom, const vecto
     custom_pyramid_ = true;
     break;
   case SPPParameter_PyramidType_CUSTOM:
+    pyramid_height_ = spp_param.pyramid_height();
     custom_pyramid_ = false;
     break;
   default:
     LOG(FATAL) << "Unknown pyramid type.";
   }
-
-  pyramid_height_ = spp_param.pyramid_height();
 
   split_top_vec_.clear();
   pooling_bottom_vecs_.clear();
