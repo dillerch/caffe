@@ -30,8 +30,6 @@ LayerParameter SPPLayer<Dtype>::GetPoolingParam(const int num_bins, const int bo
 
   LOG(INFO) << bottom_h << "," << kernel_h << "," << stride_h;
 
-  pooling_param.mutable_pooling_param()->set_pad_h(pad_h);
-  pooling_param.mutable_pooling_param()->set_pad_w(pad_w);
   pooling_param.mutable_pooling_param()->set_kernel_h(kernel_h);
   pooling_param.mutable_pooling_param()->set_kernel_w(kernel_w);
   pooling_param.mutable_pooling_param()->set_stride_h(stride_h);
