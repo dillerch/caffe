@@ -21,26 +21,21 @@ LayerParameter SPPLayer<Dtype>::GetPoolingParam(const int num_bins, const int bo
   // find padding and kernel size so that the pooling is
   // performed across the entire image
   int kernel_h = ceil(bottom_h / static_cast<double>(num_bins));
-  // remainder_h is the min number of pixels that need to be padded before
-  // entire image height is pooled over with the chosen kernel dimension
-  int remainder_h = kernel_h * num_bins - bottom_h;
-  // pooling layer pads (2 * pad_h) pixels on the top and bottom of the
-  // image.
-  int pad_h = (remainder_h + 1) / 2;
+  //Using stride instead of padding as padding has a bad impact on the model performance
+  int stride_h = floor(bottom_h / static_cast<double>(num_bins));
 
   // similar logic for width
   int kernel_w = ceil(bottom_w / static_cast<double>(num_bins));
-  int remainder_w = kernel_w * num_bins - bottom_w;
-  int pad_w = (remainder_w + 1) / 2;
+  int stride_w = floor(bottom_w / static_cast<double>(num_bins));
 
-  LOG(INFO) << bottom_h << "," << kernel_h << "," << remainder_h << "," << pad_h;
+  LOG(INFO) << bottom_h << "," << kernel_h << "," << stride_h;
 
   pooling_param.mutable_pooling_param()->set_pad_h(pad_h);
   pooling_param.mutable_pooling_param()->set_pad_w(pad_w);
   pooling_param.mutable_pooling_param()->set_kernel_h(kernel_h);
   pooling_param.mutable_pooling_param()->set_kernel_w(kernel_w);
-  pooling_param.mutable_pooling_param()->set_stride_h(kernel_h);
-  pooling_param.mutable_pooling_param()->set_stride_w(kernel_w);
+  pooling_param.mutable_pooling_param()->set_stride_h(stride_h);
+  pooling_param.mutable_pooling_param()->set_stride_w(stride_w);
 
   switch (spp_param.pool()) {
   case SPPParameter_PoolMethod_MAX:
