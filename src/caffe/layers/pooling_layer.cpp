@@ -73,8 +73,8 @@ void PoolingLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
         || this->layer_param_.pooling_param().pool()
         == PoolingParameter_PoolMethod_MAX)
         << "Padding implemented only for average and max pooling.";
-    //CHECK_LT(pad_h_, kernel_h_);
-    //CHECK_LT(pad_w_, kernel_w_);
+    CHECK_LT(pad_h_, kernel_h_);
+    CHECK_LT(pad_w_, kernel_w_);
   }
 }
 
