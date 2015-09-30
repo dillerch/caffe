@@ -5,7 +5,7 @@
 DATA=data/ilsvrc12
 TOOLS=build/tools
 
-$TOOLS/compute_image_mean /data/share/ILSVRC2012/LMDB/256x256/train \
-  $DATA/imagenet_mean.binaryproto
+$TOOLS/compute_image_mean /media/christian/ImageNet/ILSVRC2012/LMDB/256x256/val \
+  $DATA/imagenet_mean_val.binaryproto
 
 echo "Done."

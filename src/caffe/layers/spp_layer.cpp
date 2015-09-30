@@ -24,6 +24,8 @@ namespace caffe {
 		int kernel_w = ceil(bottom_w / static_cast<double>(num_bins));
 		int stride_w = floor(bottom_w / static_cast<double>(num_bins));
 
+		LOG(INFO) << num_bins << "," << bottom_h << "," << bottom_w << "," << kernel_h << "," << stride_h << "," << kernel_w << "," << stride_w;
+
 		//Set the parameters
 		pooling_param.mutable_pooling_param()->set_kernel_h(kernel_h);
 	 	pooling_param.mutable_pooling_param()->set_kernel_w(kernel_w);
