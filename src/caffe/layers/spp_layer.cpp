@@ -55,14 +55,14 @@ namespace caffe {
 		bottom_h_ = bottom[0]->height();
 		bottom_w_ = bottom[0]->width();
 
-		//Reshape max index blob
-		max_idx_.Reshape(num_, channels_, total_num_bins_, 1);
+    //Top shape passes bottom num and channels and a third dimension, the total number of bins
+    vector<int> top_shape;
+    top_shape.push_back(num_);
+    top_shape.push_back(channels_);
+    top_shape.push_back(total_num_bins_);
 
-		//Top shape passes bottom num and channels and a third dimension, the total number of bins
-		vector<int> top_shape;
-		top_shape.push_back(num_);
-		top_shape.push_back(channels_);
-		top_shape.push_back(total_num_bins_);
+		//Reshape max index blob
+		max_idx_.Reshape(top_shape);
 
 		//Reshape top
 		top[0]->Reshape(top_shape);
@@ -140,6 +140,7 @@ namespace caffe {
               const int index = previous_bins + nbh * num_bins_w_[p_layer] + nbw;
               const int bottom_index = mask[index];
               bottom_diff[bottom_index] += top_diff[index];
+              LOG(INFO) << bottom_index << "-" << bottom[0]->count() << ";" << index << "-" << top[0];
             }
           }
           //Shift pointers
