@@ -973,14 +973,8 @@ message SPPParameter {
     AVE = 1;
     STOCHASTIC = 2;
   }
-  enum PyramidType {
-    SPP_NET4 = 0;
-    SPP_NET6 = 1;
-    CUSTOM = 2;
-  }
-  optional PyramidType pyramid_type = 1 [default = CUSTOM];
-  optional uint32 pyramid_height = 2;
-  optional PoolMethod pool = 3 [default = MAX]; // The pooling method
+  repeated int32 pyramid_shape = 1 [packed = true];
+  optional PoolMethod pool = 2 [default = MAX]; // The pooling method
   enum Engine {
     DEFAULT = 0;
     CAFFE = 1;
