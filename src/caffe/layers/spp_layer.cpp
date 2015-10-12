@@ -140,7 +140,6 @@ namespace caffe {
               const int index = previous_bins + nbh * num_bins_w_[p_layer] + nbw;
               const int bottom_index = mask[index];
               bottom_diff[bottom_index] += top_diff[index];
-              LOG(INFO) << bottom_index << "-" << bottom[0]->count() << ";" << index << "-" << top[0];
             }
           }
           //Shift pointers
