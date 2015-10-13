@@ -139,6 +139,11 @@ namespace caffe {
             for (int nbw = 0; nbw < num_bins_w_[p_layer]; ++nbw) {
               const int index = previous_bins + nbh * num_bins_w_[p_layer] + nbw;
               const int bottom_index = mask[index];
+              LOG(INFO) << "A" << bottom_index;
+              Dtype a = bottom_diff[bottom_index];
+              LOG(INFO) << "B" << index;
+              Dtype b = top_diff[index];
+              LOG(INFO) << "C";
               bottom_diff[bottom_index] += top_diff[index];
             }
           }
