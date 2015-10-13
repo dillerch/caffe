@@ -136,16 +136,12 @@ caffe_set(top[0]->count(), Dtype(-FLT_MAX), top[0]->mutable_cpu_data());
       //Loop over num, channels, bin h and w
       for (int n = 0; n < top[0]->num(); ++n) {
         for (int c = 0; c < channels_; ++c) {
-        	LOG(INFO) << n << "-" << c << "--" << previous_bins;
           for (int nbh = 0; nbh < num_bins_h_[p_layer]; ++nbh) {
             for (int nbw = 0; nbw < num_bins_w_[p_layer]; ++nbw) {
               const int index = previous_bins + nbh * num_bins_w_[p_layer] + nbw;
               const int bottom_index = mask[index];
-              LOG(INFO) << "A" << bottom_index;
               Dtype a = bottom_diff[bottom_index];
-              LOG(INFO) << "B" << index;
               Dtype b = top_diff[index];
-              LOG(INFO) << "C";
               bottom_diff[bottom_index] += top_diff[index];
             }
           }
