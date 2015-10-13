@@ -73,6 +73,10 @@ namespace caffe {
 	  //Store previous pyramid bins
 	  int previous_bins = 0;
 
+		//Reset top data and mask
+caffe_set(max_idx_.count(), -1, max_idx_.mutable_cpu_data());
+caffe_set(top[0]->count(), Dtype(-FLT_MAX), top[0]->mutable_cpu_data());
+
 		//Loop over pyramid layers
 		for(int p_layer = 0; p_layer < pyramid_height_; ++p_layer) {
 	    //Get top, bottom and mask data
@@ -82,9 +86,6 @@ namespace caffe {
 	    //Calculate bin width and height
 			Dtype bin_size_w = static_cast<Dtype>(bottom_w_) / static_cast<Dtype>(num_bins_w_[p_layer]);
 			Dtype bin_size_h = static_cast<Dtype>(bottom_h_) / static_cast<Dtype>(num_bins_h_[p_layer]);
-			//Reset top data and mask
-      caffe_set(top[0]->count(), -1, mask);
-      caffe_set(top[0]->count(), Dtype(-FLT_MAX), top_data);
 			//Loop over num, channels, bin h and w
 			for (int n = 0; n < num_; ++n) {
 				for (int c = 0; c < channels_; ++c) {
