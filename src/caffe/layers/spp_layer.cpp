@@ -135,7 +135,7 @@ namespace caffe {
       //Loop over num, channels, bin h and w
       for (int n = 0; n < top[0]->num(); ++n) {
         for (int c = 0; c < channels_; ++c) {
-        	LOG(INFO) << n "-" << c << "--" << previous_bins;
+        	LOG(INFO) << n << "-" << c << "--" << previous_bins;
           for (int nbh = 0; nbh < num_bins_h_[p_layer]; ++nbh) {
             for (int nbw = 0; nbw < num_bins_w_[p_layer]; ++nbw) {
               const int index = previous_bins + nbh * num_bins_w_[p_layer] + nbw;
