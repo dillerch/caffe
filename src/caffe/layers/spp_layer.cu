@@ -8,6 +8,7 @@
 #include "caffe/util/math_functions.hpp"
 #include "caffe/vision_layers.hpp"
 
+//Eclipse CDT macro definitions to prevent syntax check errors; ignored by compiler
 #ifdef __CDT_PARSER__
 #define __global__
 #define CUDA_KERNEL_LOOP(i, n) for (int i = 0; i < (n); ++i)
@@ -22,8 +23,10 @@ __global__ void SPPForward(const int num_threads,
     const int num_bins_w, const int num_bins_h, const int total_num_bins,
     const Dtype bin_size_w, const Dtype bin_size_h,
     const int channels, const int previous_bins) {
+
   //Run a CUDA kernel loop; grid stride looping
   CUDA_KERNEL_LOOP(index, num_threads) {
+
     //Get current position
     const int n = index / num_bins_w / num_bins_h / channels;
     const int c = (index / num_bins_w / num_bins_h) % channels;
@@ -53,47 +56,51 @@ __global__ void SPPForward(const int num_threads,
         }
       }
     }
+
     //Write results to global memory
     const int bin_index = (n * channels + c) * total_num_bins + previous_bins + nbh * num_bins_w + nbw;
     top_data[bin_index] = maxval;
     mask[bin_index] = maxidx;
   }
+
 }
 
 template<typename Dtype>
-void SPPLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
-  const vector<Blob<Dtype>*>& top) {
-    //Get top, bottom and mask data
-    const Dtype* bottom_data = bottom[0]->gpu_data();
-    Dtype* top_data = top[0]->mutable_gpu_data();
-    int* mask = max_idx_.mutable_gpu_data();
+void SPPLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
 
-    //Store previous pyramid bins
-    int previous_bins = 0;
+  //Get top, bottom and mask data
+  const Dtype* const bottom_data = bottom[0]->gpu_data();
+  Dtype* const top_data = top[0]->mutable_gpu_data();
+  int* const mask = max_idx_.mutable_gpu_data();
 
-    //Loop over pyramid layers
-    for(int p_layer = 0; p_layer < pyramid_height_; ++p_layer) {
-      //Calculate bin width and height
-      Dtype bin_size_w = static_cast<Dtype>(bottom_w_) / static_cast<Dtype>(num_bins_w_[p_layer]);
-      Dtype bin_size_h = static_cast<Dtype>(bottom_h_) / static_cast<Dtype>(num_bins_h_[p_layer]);
+  //Store previous pyramid bins
+  int previous_bins = 0;
 
-      //The number of workers we will spawn on the GPU instead of looping over num, channels and bins
-      const int count = num_ * channels_ * num_bins_w_[p_layer] * num_bins_h_[p_layer];
+  //Loop over pyramid layers
+  for(int p_layer = 0; p_layer < pyramid_height_; ++p_layer) {
+    //Calculate bin width and height
+    const Dtype bin_size_w = static_cast<Dtype>(bottom_w_) / static_cast<Dtype>(num_bins_w_[p_layer]);
+    const Dtype bin_size_h = static_cast<Dtype>(bottom_h_) / static_cast<Dtype>(num_bins_h_[p_layer]);
 
-      //Launch CUDA kernel
-      SPPForward<Dtype><<<CAFFE_GET_BLOCKS(count), CAFFE_CUDA_NUM_THREADS>>>(
-        count,
-        bottom_data, top_data, mask,
-        bottom_w_, bottom_h_,
-        num_bins_w_[p_layer], num_bins_h_[p_layer], total_num_bins_,
-        bin_size_w, bin_size_h,
-        channels_, previous_bins);
+    //The number of workers we will spawn on the GPU instead of looping over num, channels and bins
+    const int count = num_ * channels_ * num_bins_w_[p_layer] * num_bins_h_[p_layer];
 
-      //Update previous bins
-      previous_bins += num_bins_h_[p_layer] * num_bins_w_[p_layer];
-    }
+    //Launch CUDA kernel
+    SPPForward<Dtype><<<CAFFE_GET_BLOCKS(count), CAFFE_CUDA_NUM_THREADS>>>(
+      count,
+      bottom_data, top_data, mask,
+      bottom_w_, bottom_h_,
+      num_bins_w_[p_layer], num_bins_h_[p_layer], total_num_bins_,
+      bin_size_w, bin_size_h,
+      channels_, previous_bins);
 
-    CUDA_POST_KERNEL_CHECK;
+    //Update previous bins
+    previous_bins += num_bins_h_[p_layer] * num_bins_w_[p_layer];
+  }
+
+  //Check for kernel errors
+  CUDA_POST_KERNEL_CHECK;
+
 }
 
 template<typename Dtype>
@@ -103,8 +110,10 @@ __global__ void SPPBackward(const int num_threads,
     const int num_bins_w, const int num_bins_h, const int total_num_bins,
     const Dtype bin_size_w, const Dtype bin_size_h,
     const int channels, const int previous_bins) {
+
   //Run a CUDA kernel loop; grid stride looping
   CUDA_KERNEL_LOOP(index, num_threads) {
+
     //Get current position
     const int n = index / bottom_width / bottom_height / channels;
     const int c = (index / bottom_width / bottom_height) % channels;
@@ -122,17 +131,19 @@ __global__ void SPPBackward(const int num_threads,
     const Dtype* const top_diff_slice = top_diff + offset;
     const int* const mask_slice = mask + offset;
 
-    //Gradient in register
-    Dtype gradient = 0;
+    //Accumulated diff in register
+    Dtype acc_diff = 0;
 
-    //Accumulate gradient
+    //Accumulate diff
     for (int ph = hstart; ph < hend; ++ph)
-      for (int pw = wstart; pw < wend; ++pw)
-        if (mask_slice[previous_bins + ph * num_bins_w + pw] == h * bottom_width + w)
-          gradient += top_diff_slice[previous_bins + ph * num_bins_w + pw];
+      for (int pw = wstart; pw < wend; ++pw) {
+        const int pos = previous_bins + ph * num_bins_w + pw;
+        if (mask_slice[pos] == h * bottom_width + w)
+          acc_diff += top_diff_slice[pos];
+      }
 
-    //Write gradient to global memory
-    bottom_diff[index] = gradient;
+    //Write accumulated diff to global memory
+    bottom_diff[index] = acc_diff;
   }
 }
 	
@@ -152,15 +163,16 @@ void SPPLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
   //Store previous pyramid bins
   int previous_bins = 0;
 
+  //Loop over pyramid layers
   for(int p_layer = 0; p_layer < pyramid_height_; ++p_layer) {
     //The number of workers we will spawn on the GPU: One per bottom data point
     const int count = bottom[0]->count();
 
     //Calculate bin width and height
-    Dtype bin_size_w = static_cast<Dtype>(bottom_w_) / static_cast<Dtype>(num_bins_w_[p_layer]);
-    Dtype bin_size_h = static_cast<Dtype>(bottom_h_) / static_cast<Dtype>(num_bins_h_[p_layer]);
+    const Dtype bin_size_w = static_cast<Dtype>(bottom_w_) / static_cast<Dtype>(num_bins_w_[p_layer]);
+    const Dtype bin_size_h = static_cast<Dtype>(bottom_h_) / static_cast<Dtype>(num_bins_h_[p_layer]);
 
-    //Launch CUDA kernel
+    //Launch CUDA kernel, indexed over bottom data points
     SPPBackward<Dtype><<<CAFFE_GET_BLOCKS(count), CAFFE_CUDA_NUM_THREADS>>>(
         count,
         bottom_diff, top_diff, mask,
@@ -172,9 +184,11 @@ void SPPLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
     //Update previous bins
     previous_bins += num_bins_h_[p_layer] * num_bins_w_[p_layer];
   }
+
+  //Check for kernel errors
   CUDA_POST_KERNEL_CHECK;
 }
 	
 	INSTANTIATE_LAYER_GPU_FUNCS(SPPLayer);
-}
 
+} //namespace caffe

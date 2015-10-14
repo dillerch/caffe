@@ -455,40 +455,44 @@ class CuDNNPoolingLayer : public PoolingLayer<Dtype> {
 
 /**
  * @brief Does spatial pyramid pooling on the input image
- *        by taking the max, average, etc. within regions
- *        so that the result vector of different sized
- *        images are of the same size.
+ *        by performing max pooling within bins
+ *        so that the output vector of different sized
+ *        images are of the exact same size.
+ *
+ *        Based on the paper Spatial Pyramid Pooling in
+ *        Deep Convolutional Neural Networks for Visual Recognition
+ *        by Shaoqing Ren et al.
+ *
+ *        Author: Christian Diller
  */
 template <typename Dtype>
 class SPPLayer : public Layer<Dtype> {
  public:
-  explicit SPPLayer(const LayerParameter& param)
-      : Layer<Dtype>(param) {}
-  virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom,
-      const vector<Blob<Dtype>*>& top);
-  virtual void Reshape(const vector<Blob<Dtype>*>& bottom,
-      const vector<Blob<Dtype>*>& top);
+  explicit SPPLayer(const LayerParameter& param) : Layer<Dtype>(param) {}
+  virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top);
+  virtual void Reshape(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top);
 
   virtual inline const char* type() const { return "SPP"; }
   virtual inline int ExactNumBottomBlobs() const { return 1; }
   virtual inline int ExactNumTopBlobs() const { return 1; }
 
  protected:
-  virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
-      const vector<Blob<Dtype>*>& top);
-  virtual void Backward_cpu(const vector<Blob<Dtype>*>& top,
-      const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
-  virtual void Forward_gpu(const vector<Blob<Dtype>*>& bottom,
-      const vector<Blob<Dtype>*>& top);
-  virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
-      const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
+  //CPU implementations
+  virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top);
+  virtual void Backward_cpu(const vector<Blob<Dtype>*>& top, const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
+  //GPU implementations
+  virtual void Forward_gpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top);
+  virtual void Backward_gpu(const vector<Blob<Dtype>*>& top, const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
 
+  //Number of bins per pyramid layer and total number of bins
   vector<int> num_bins_w_, num_bins_h_;
-  int pyramid_height_;
   int total_num_bins_;
+  //SPP height
+  int pyramid_height_;
+  //Stored input dimensions
   int bottom_h_, bottom_w_;
   int num_, channels_;
-
+  //Blob containing max indices for max pooling
   Blob<int> max_idx_;
 };
 
