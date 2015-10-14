@@ -70,13 +70,11 @@ namespace caffe {
 
 	template <typename Dtype>
 	void SPPLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
-	  //Store previous pyramid bins
-	  int previous_bins = 0;
-
 		//Reset top data and mask
-caffe_set(max_idx_.count(), -1, max_idx_.mutable_cpu_data());
-caffe_set(top[0]->count(), Dtype(-FLT_MAX), top[0]->mutable_cpu_data());
-
+    caffe_set(max_idx_.count(), -1, max_idx_.mutable_cpu_data());
+    caffe_set(top[0]->count(), Dtype(-FLT_MAX), top[0]->mutable_cpu_data());
+    //Store previous pyramid bins
+    int previous_bins = 0;
 		//Loop over pyramid layers
 		for(int p_layer = 0; p_layer < pyramid_height_; ++p_layer) {
 	    //Get top, bottom and mask data
@@ -115,6 +113,8 @@ caffe_set(top[0]->count(), Dtype(-FLT_MAX), top[0]->mutable_cpu_data());
           mask += top[0]->offset(0, 1);
 				}
 			}
+
+			//Update previous bins
 			previous_bins += num_bins_h_[p_layer] * num_bins_w_[p_layer];
 		}
 	}
@@ -123,26 +123,27 @@ caffe_set(top[0]->count(), Dtype(-FLT_MAX), top[0]->mutable_cpu_data());
 	void SPPLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
 		if (!propagate_down[0]) return;
 
-		//Memset bottom diffs to 0
+		//Initialize bottom diff
     caffe_set(bottom[0]->count(), Dtype(0), bottom[0]->mutable_cpu_diff());
 
+    //Store previous pyramid bins
     int previous_bins = 0;
+
     //Loop over pyramid layers
     for(int p_layer = 0; p_layer < pyramid_height_; ++p_layer) {
-      //Get top and bottom diffs
+      //Get top diffs, bottom diffs and mask
       const Dtype* top_diff = top[0]->cpu_diff();
       Dtype* bottom_diff = bottom[0]->mutable_cpu_diff();
       const int* mask = max_idx_.cpu_data();
+
       //Loop over num, channels, bin h and w
       for (int n = 0; n < top[0]->num(); ++n) {
         for (int c = 0; c < channels_; ++c) {
           for (int nbh = 0; nbh < num_bins_h_[p_layer]; ++nbh) {
             for (int nbw = 0; nbw < num_bins_w_[p_layer]; ++nbw) {
+              //Pass diff to bottom
               const int index = previous_bins + nbh * num_bins_w_[p_layer] + nbw;
-              const int bottom_index = mask[index];
-              Dtype a = bottom_diff[bottom_index];
-              Dtype b = top_diff[index];
-              bottom_diff[bottom_index] += top_diff[index];
+              bottom_diff[mask[index]] += top_diff[index];
             }
           }
           //Shift pointers
@@ -151,6 +152,8 @@ caffe_set(top[0]->count(), Dtype(-FLT_MAX), top[0]->mutable_cpu_data());
           mask += top[0]->offset(0, 1);
         }
       }
+
+      //Update previous bins
       previous_bins += num_bins_h_[p_layer] * num_bins_w_[p_layer];
     }
   }
